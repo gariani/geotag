@@ -1,0 +1,38 @@
+name: geotag
+description: "Geolocation assignment for travel photos."
+publish_to: 'none'
+version: 0.1.0
+
+environment:
+  sdk: ^3.9.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_map: ^8.2.2
+  latlong2: ^0.9.1
+  file_selector: ^1.0.3
+  image_picker: ^1.2.0
+  url_launcher: ^6.3.0
+  flutter_exif_plugin: ^1.1.0
+  http: ^1.5.0
+  permission_handler: ^12.0.1
+  path_provider: ^2.1.5
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+  flutter_launcher_icons: ^0.14.3
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/
+
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: "assets/geotag_Nero_AI_Background_Remover_transparent-removebg-preview.png"
+  adaptive_icon_background: "#F8F8F8"
+  adaptive_icon_foreground: "assets/geotag_Nero_AI_Background_Remover_transparent-removebg-preview.png"
