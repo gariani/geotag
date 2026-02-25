@@ -53,9 +53,31 @@ class GeotaggingPage extends StatelessWidget {
             if (controller.isLoading) {
               return const Center(child: CircularProgressIndicator());
             }
+            final scaffoldContext = context;
             return PhotoGrid(
               controller: controller,
               onSetLocationPressed: () => _openMapBottomSheet(context),
+              onExportCopiesPressed: () async {
+                final result =
+                    await controller.exportPhotosWithExistingLocation();
+                if (!scaffoldContext.mounted) return;
+                switch (result) {
+                  case ExportPhotosSuccess(:final path):
+                    ScaffoldMessenger.of(scaffoldContext).showSnackBar(
+                      SnackBar(content: Text('Exported to $path')),
+                    );
+                  case ExportPhotosNoLocation():
+                    ScaffoldMessenger.of(scaffoldContext).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          'No selected photos have location set',
+                        ),
+                      ),
+                    );
+                  case ExportPhotosCancelled():
+                    break;
+                }
+              },
             );
           },
         ),

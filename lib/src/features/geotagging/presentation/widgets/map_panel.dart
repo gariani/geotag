@@ -2,9 +2,11 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../../core/theme/app_colors.dart';
 import '../../../../core/config/map_tile_config.dart';
 import '../../data/services/osm_geocoding_service.dart';
 import '../../domain/entities/location_info.dart';
@@ -34,7 +36,6 @@ class _MapPanelState extends State<MapPanel> {
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocus = FocusNode();
   final OsmGeocodingService _geocodingService = OsmGeocodingService();
-
   Timer? _searchDebounce;
   List<GeocodingResult> _results = [];
   bool _isSearching = false;
@@ -117,6 +118,14 @@ class _MapPanelState extends State<MapPanel> {
                     bottom: 80,
                     child: Column(
                       children: [
+                        Tooltip(
+                          message: 'Current location',
+                          child: _MapControlButton(
+                            icon: Icons.my_location,
+                            onPressed: _goToCurrentLocation,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
                         _MapControlButton(
                           icon: Icons.add,
                           onPressed: () {
@@ -242,6 +251,31 @@ class _MapPanelState extends State<MapPanel> {
     });
   }
 
+  Future<void> _goToCurrentLocation() async {
+    final enabled = await Geolocator.isLocationServiceEnabled();
+    if (!enabled && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Location services are disabled')),
+      );
+      return;
+    }
+    try {
+      final position = await Geolocator.getCurrentPosition();
+      final point = LatLng(position.latitude, position.longitude);
+      _mapController.move(point, 14);
+      widget.controller.setLocation(LocationInfo(
+        latitude: position.latitude,
+        longitude: position.longitude,
+      ));
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not get location: $e')),
+        );
+      }
+    }
+  }
+
   @override
   void didUpdateWidget(covariant MapPanel oldWidget) {
     super.didUpdateWidget(oldWidget);
@@ -277,7 +311,7 @@ class _MapFooter extends StatelessWidget {
   final Future<void> Function() onApply;
   final Future<void> Function() onApplyAndExport;
 
-  static const _accentColor = Color(0xFFE65100);
+  static const _accentColor = AppColors.brandOrange;
 
   @override
   Widget build(BuildContext context) {
@@ -322,7 +356,7 @@ class _MapFooter extends StatelessWidget {
             width: double.infinity,
             child: FilledButton.icon(
               onPressed: hasSelection && location != null ? onApply : null,
-              icon: const Icon(Icons.check_circle_outline, size: 20),
+              icon: const Icon(Icons.add_location, size: 20),
               label: const Text('Apply to Selected'),
               style: FilledButton.styleFrom(
                 backgroundColor: _accentColor,
@@ -337,7 +371,7 @@ class _MapFooter extends StatelessWidget {
               onPressed: hasSelection && location != null
                   ? onApplyAndExport
                   : null,
-              icon: const Icon(Icons.save_alt, size: 20),
+              icon: const Icon(Icons.drive_folder_upload, size: 20),
               label: const Text('Apply & Export Copies'),
               style: FilledButton.styleFrom(
                 backgroundColor: _accentColor,
@@ -449,7 +483,7 @@ class _SearchPanel extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             child: Row(
               children: [
-                const Icon(Icons.search),
+                Icon(Icons.location_searching, color: AppColors.brandOrange),
                 const SizedBox(width: 8),
                 Expanded(
                   child: TextField(

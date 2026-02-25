@@ -45,5 +45,7 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>GeoTag uses your location to center the map so you can tag photos with where you are.</string>
 </dict>
 </plist>

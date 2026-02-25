@@ -14,6 +14,17 @@ import '../../domain/repositories/photo_repository.dart';
 
 enum PhotoFilter { all, missingLocation, recent }
 
+sealed class ExportPhotosResult {}
+
+class ExportPhotosSuccess extends ExportPhotosResult {
+  ExportPhotosSuccess(this.path);
+  final String path;
+}
+
+class ExportPhotosNoLocation extends ExportPhotosResult {}
+
+class ExportPhotosCancelled extends ExportPhotosResult {}
+
 class GeotaggingController extends ChangeNotifier {
   GeotaggingController(this._repository)
       : _exifReader = ExifReaderService(),
@@ -32,10 +43,12 @@ class GeotaggingController extends ChangeNotifier {
   bool _hasCompletedInitialLoad = false;
   bool _permissionRequested = false;
   PhotoFilter _filter = PhotoFilter.all;
+  bool _isMultiSelectEnabled = false;
 
   List<Photo> get photos => _filteredPhotos;
   PhotoFilter get filter => _filter;
   List<Photo> get allPhotos => _photos;
+  bool get isMultiSelectEnabled => _isMultiSelectEnabled;
 
   List<Photo> get _filteredPhotos {
     switch (_filter) {
@@ -54,6 +67,21 @@ class GeotaggingController extends ChangeNotifier {
     _filter = value;
     notifyListeners();
   }
+
+  void toggleMultiSelectMode() {
+    _isMultiSelectEnabled = !_isMultiSelectEnabled;
+    if (!_isMultiSelectEnabled && _selectedPhotoIds.length > 1) {
+      // When leaving bulk mode, keep at most one selection for simpler tagging.
+      final first = _selectedPhotoIds.isNotEmpty ? _selectedPhotoIds.first : null;
+      _selectedPhotoIds
+        ..clear();
+      if (first != null) {
+        _selectedPhotoIds.add(first);
+      }
+    }
+    notifyListeners();
+  }
+
   Set<String> get selectedPhotoIds => _selectedPhotoIds;
   LocationInfo? get selectedLocation => _selectedLocation;
   bool get isLoading => _isLoading;
@@ -70,10 +98,21 @@ class GeotaggingController extends ChangeNotifier {
   }
 
   void togglePhotoSelection(String photoId) {
-    if (_selectedPhotoIds.contains(photoId)) {
-      _selectedPhotoIds.remove(photoId);
+    if (_isMultiSelectEnabled) {
+      if (_selectedPhotoIds.contains(photoId)) {
+        _selectedPhotoIds.remove(photoId);
+      } else {
+        _selectedPhotoIds.add(photoId);
+      }
     } else {
-      _selectedPhotoIds.add(photoId);
+      if (_selectedPhotoIds.length == 1 &&
+          _selectedPhotoIds.contains(photoId)) {
+        _selectedPhotoIds.clear();
+      } else {
+        _selectedPhotoIds
+          ..clear()
+          ..add(photoId);
+      }
     }
     notifyListeners();
   }
@@ -98,8 +137,6 @@ class GeotaggingController extends ChangeNotifier {
         .toList();
     if (withLocation.isEmpty) return;
     final firstWithLocation = withLocation.first;
-    if (firstWithLocation == null) return;
-
     var loc = firstWithLocation.location!;
     if (loc.label == null || loc.label!.isEmpty) {
       final label =
@@ -289,6 +326,45 @@ class GeotaggingController extends ChangeNotifier {
     _selectedPhotoIds.clear();
     _isLoading = false;
     notifyListeners();
+  }
+
+  /// Whether at least one selected photo has location set.
+  bool get hasSelectedPhotosWithLocation => _photos.any((p) =>
+      _selectedPhotoIds.contains(p.id) && p.location != null);
+
+  /// Exports only selected photos that already have location set.
+  /// Does not open the map or ask for location input.
+  Future<ExportPhotosResult> exportPhotosWithExistingLocation() async {
+    final withLocation = _photos
+        .where((p) =>
+            _selectedPhotoIds.contains(p.id) && p.location != null)
+        .toList();
+    if (withLocation.isEmpty) {
+      return ExportPhotosNoLocation();
+    }
+
+    final allowed = await _ensureStoragePermission();
+    if (!allowed) {
+      return ExportPhotosCancelled();
+    }
+
+    final exportDirectory = await getDirectoryPath(
+      confirmButtonText: 'Select',
+    );
+    if (exportDirectory == null) {
+      return ExportPhotosCancelled();
+    }
+
+    _isLoading = true;
+    notifyListeners();
+
+    final ids = withLocation.map((p) => p.id).toSet();
+    await _exportPhotos(exportDirectory, _photos, ids);
+
+    _selectedPhotoIds.clear();
+    _isLoading = false;
+    notifyListeners();
+    return ExportPhotosSuccess(exportDirectory);
   }
 
   Future<bool> _ensureStoragePermission() async {
