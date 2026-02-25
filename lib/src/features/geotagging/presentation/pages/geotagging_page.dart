@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+
+import '../../../../core/widgets/about_dialog.dart';
+import '../controllers/export_photos_result.dart';
 import '../controllers/geotagging_controller.dart';
 import '../widgets/map_panel.dart';
 import '../widgets/photo_grid.dart';
@@ -22,22 +25,24 @@ class GeotaggingPage extends StatelessWidget {
       builder: (context) => _MapBottomSheet(
         controller: controller,
         onApply: () async {
-          final savePath = await controller.applyLocationToSelection();
+          await controller.applyLocationToSelection();
           if (!scaffoldContext.mounted) return;
           Navigator.of(scaffoldContext).pop();
           ScaffoldMessenger.of(scaffoldContext).showSnackBar(
-            SnackBar(
-              content: Text(
-                savePath != null
-                    ? 'Saved to $savePath'
-                    : 'Location applied to selected photos',
-              ),
+            const SnackBar(
+              content: Text('Location applied in memory. Use Export to save.'),
             ),
           );
         },
         onApplyAndExport: () async {
-          await controller.applyLocationAndExport();
-          if (context.mounted) Navigator.of(context).pop();
+          final path = await controller.applyLocationAndExport();
+          if (!scaffoldContext.mounted) return;
+          Navigator.of(scaffoldContext).pop();
+          if (path != null) {
+            ScaffoldMessenger.of(scaffoldContext).showSnackBar(
+              SnackBar(content: Text('Exported to $path')),
+            );
+          }
         },
       ),
     );
@@ -46,6 +51,41 @@ class GeotaggingPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        title: const Text('GeoPic'),
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.black87,
+        elevation: 0,
+        actions: [
+          Theme(
+            data: Theme.of(context).copyWith(
+              popupMenuTheme: PopupMenuThemeData(
+                color: Colors.white,
+              ),
+            ),
+            child: PopupMenuButton<String>(
+              icon: const Icon(Icons.more_vert),
+              onSelected: (value) {
+              if (value == 'about') {
+                showAppAboutDialog(context);
+              }
+            },
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'about',
+                child: Row(
+                  children: [
+                    Icon(Icons.info_outline, size: 20),
+                    SizedBox(width: 12),
+                    Text('About'),
+                  ],
+                ),
+              ),
+            ],
+            ),
+          ),
+        ],
+      ),
       body: SafeArea(
         child: AnimatedBuilder(
           animation: controller,
@@ -105,14 +145,14 @@ class _MapBottomSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final bottomPadding = MediaQuery.of(context).viewPadding.bottom;
     final screenHeight = MediaQuery.of(context).size.height;
-    final mapHeight = screenHeight * 0.55;
+    final mapHeight = screenHeight * 0.72;
 
     return DraggableScrollableSheet(
-      initialChildSize: 0.72,
-      minChildSize: 0.42,
-      maxChildSize: 0.94,
+      initialChildSize: 0.88,
+      minChildSize: 0.55,
+      maxChildSize: 0.95,
       snap: true,
-      snapSizes: const [0.42, 0.72, 0.94],
+      snapSizes: const [0.55, 0.88, 0.95],
       snapAnimationDuration: const Duration(milliseconds: 200),
       shouldCloseOnMinExtent: true,
       builder: (context, scrollController) {

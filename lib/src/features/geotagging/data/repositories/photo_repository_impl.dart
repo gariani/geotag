@@ -22,4 +22,16 @@ class PhotoRepositoryImpl implements PhotoRepository {
       ..addAll(photos);
     await _metadataService.applyLocations(photos);
   }
+
+  @override
+  Future<void> persistPhotos(List<Photo> photos) async {
+    _photos
+      ..clear()
+      ..addAll(photos);
+  }
+
+  @override
+  Future<void> writeExifForPhotos(List<Photo> photos) async {
+    await _metadataService.applyLocations(photos);
+  }
 }

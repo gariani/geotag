@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:geotag/src/features/geotagging/domain/entities/location_info.dart';
 import 'package:geotag/src/features/geotagging/domain/entities/photo.dart';
 import 'package:geotag/src/features/geotagging/domain/repositories/photo_repository.dart';
+import 'package:geotag/src/features/geotagging/presentation/controllers/export_photos_result.dart';
 import 'package:geotag/src/features/geotagging/presentation/controllers/geotagging_controller.dart';
 
 class FakePhotoRepository implements PhotoRepository {
@@ -20,6 +21,16 @@ class FakePhotoRepository implements PhotoRepository {
       ..clear()
       ..addAll(photos);
   }
+
+  @override
+  Future<void> persistPhotos(List<Photo> photos) async {
+    _photos
+      ..clear()
+      ..addAll(photos);
+  }
+
+  @override
+  Future<void> writeExifForPhotos(List<Photo> photos) async {}
 }
 
 void main() {

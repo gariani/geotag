@@ -6,29 +6,20 @@ import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
+
+import '../../data/helpers/photo_path_helper.dart';
 import '../../data/services/exif_reader_service.dart';
 import '../../data/services/osm_geocoding_service.dart';
 import '../../domain/entities/location_info.dart';
 import '../../domain/entities/photo.dart';
 import '../../domain/repositories/photo_repository.dart';
-
-enum PhotoFilter { all, missingLocation, recent }
-
-sealed class ExportPhotosResult {}
-
-class ExportPhotosSuccess extends ExportPhotosResult {
-  ExportPhotosSuccess(this.path);
-  final String path;
-}
-
-class ExportPhotosNoLocation extends ExportPhotosResult {}
-
-class ExportPhotosCancelled extends ExportPhotosResult {}
+import 'export_photos_result.dart';
+import 'photo_filter.dart';
 
 class GeotaggingController extends ChangeNotifier {
   GeotaggingController(this._repository)
-      : _exifReader = ExifReaderService(),
-        _geocoding = OsmGeocodingService() {
+    : _exifReader = ExifReaderService(),
+      _geocoding = OsmGeocodingService() {
     _loadPhotos();
   }
 
@@ -57,8 +48,8 @@ class GeotaggingController extends ChangeNotifier {
       case PhotoFilter.missingLocation:
         return _photos.where((p) => p.location == null).toList();
       case PhotoFilter.recent:
-        final sorted =
-            List<Photo>.from(_photos)..sort((a, b) => b.takenAt.compareTo(a.takenAt));
+        final sorted = List<Photo>.from(_photos)
+          ..sort((a, b) => b.takenAt.compareTo(a.takenAt));
         return sorted.take(50).toList();
     }
   }
@@ -72,9 +63,10 @@ class GeotaggingController extends ChangeNotifier {
     _isMultiSelectEnabled = !_isMultiSelectEnabled;
     if (!_isMultiSelectEnabled && _selectedPhotoIds.length > 1) {
       // When leaving bulk mode, keep at most one selection for simpler tagging.
-      final first = _selectedPhotoIds.isNotEmpty ? _selectedPhotoIds.first : null;
-      _selectedPhotoIds
-        ..clear();
+      final first = _selectedPhotoIds.isNotEmpty
+          ? _selectedPhotoIds.first
+          : null;
+      _selectedPhotoIds.clear();
       if (first != null) {
         _selectedPhotoIds.add(first);
       }
@@ -139,8 +131,11 @@ class GeotaggingController extends ChangeNotifier {
     final firstWithLocation = withLocation.first;
     var loc = firstWithLocation.location!;
     if (loc.label == null || loc.label!.isEmpty) {
-      final label =
-          await _geocoding.reverseGeocode(loc.latitude, loc.longitude, _userAgent);
+      final label = await _geocoding.reverseGeocode(
+        loc.latitude,
+        loc.longitude,
+        _userAgent,
+      );
       if (label != null) {
         loc = LocationInfo(
           latitude: loc.latitude,
@@ -170,7 +165,7 @@ class GeotaggingController extends ChangeNotifier {
         newPhotos.add(
           Photo(
             id: 'p${DateTime.now().microsecondsSinceEpoch}-${newPhotos.length}',
-            title: _fileName(path),
+            title: PhotoPathHelper.fileName(path),
             takenAt: lastModified,
             imagePath: path,
             location: location,
@@ -217,25 +212,11 @@ class GeotaggingController extends ChangeNotifier {
     }
   }
 
-  String _fileName(String path) {
-    final normalized = path.replaceAll('\\', '/');
-    final lastSlash = normalized.lastIndexOf('/');
-    if (lastSlash == -1 || lastSlash == normalized.length - 1) {
-      return normalized;
-    }
-    return normalized.substring(lastSlash + 1);
-  }
-
-  /// Applies location to selected photos (writes EXIF to originals) and saves
-  /// copies to a user-visible folder. Returns the save path, or null on failure.
-  Future<String?> applyLocationToSelection() async {
+  /// Applies location to selected photos in memory only. Does not write to files.
+  /// Use Export or Apply & Export Copies to save to disk.
+  Future<bool> applyLocationToSelection() async {
     if (_selectedLocation == null || _selectedPhotoIds.isEmpty) {
-      return null;
-    }
-
-    final allowed = await _ensureStoragePermission();
-    if (!allowed) {
-      return null;
+      return false;
     }
 
     _isLoading = true;
@@ -243,71 +224,37 @@ class GeotaggingController extends ChangeNotifier {
 
     final selectedIds = Set<String>.from(_selectedPhotoIds);
     final updated = _photos
-        .map((photo) => selectedIds.contains(photo.id)
-            ? photo.copyWith(location: _selectedLocation)
-            : photo)
+        .map(
+          (photo) => selectedIds.contains(photo.id)
+              ? photo.copyWith(location: _selectedLocation)
+              : photo,
+        )
         .toList();
 
     _photos = updated;
-    await _repository.updatePhotos(updated);
-
-    final saveDir = await _defaultSaveDirectory();
-    if (saveDir != null) {
-      await _exportPhotos(saveDir, updated, selectedIds);
-    }
+    await _repository.persistPhotos(updated);
 
     _selectedPhotoIds.clear();
     _isLoading = false;
     notifyListeners();
-    return saveDir;
+    return true;
   }
 
-  Future<String?> _defaultSaveDirectory() async {
-    try {
-      String? basePath;
-      if (Platform.isAndroid) {
-        basePath = await _getAndroidPublicPicturesPath();
-      }
-      if (basePath == null || basePath.isEmpty) {
-        final base = await getDownloadsDirectory() ?? await getApplicationDocumentsDirectory();
-        basePath = base.path;
-      }
-      final geotagDir = Directory(_joinPath(basePath, 'GeoTag'));
-      if (!await geotagDir.exists()) {
-        await geotagDir.create(recursive: true);
-      }
-      return geotagDir.path;
-    } catch (_) {
-      return null;
-    }
-  }
-
-  static const _channel = MethodChannel('geopic/storage');
-
-  Future<String?> _getAndroidPublicPicturesPath() async {
-    try {
-      final path = await _channel.invokeMethod<String>('getPublicPicturesPath');
-      return path;
-    } on PlatformException {
-      return null;
-    }
-  }
-
-  Future<void> applyLocationAndExport() async {
+  /// Applies location to selected photos and exports to GeoTag folder.
+  /// Returns the export path, or null on failure.
+  Future<String?> applyLocationAndExport() async {
     if (_selectedLocation == null || _selectedPhotoIds.isEmpty) {
-      return;
+      return null;
     }
 
     final allowed = await _ensureStoragePermission();
     if (!allowed) {
-      return;
+      return null;
     }
 
-    final exportDirectory = await getDirectoryPath(
-      confirmButtonText: 'Select',
-    );
+    final exportDirectory = await _defaultGeoTagDirectory();
     if (exportDirectory == null) {
-      return;
+      return null;
     }
 
     _isLoading = true;
@@ -315,29 +262,32 @@ class GeotaggingController extends ChangeNotifier {
 
     final selectedIds = Set<String>.from(_selectedPhotoIds);
     final updated = _photos
-        .map((photo) => selectedIds.contains(photo.id)
-            ? photo.copyWith(location: _selectedLocation)
-            : photo)
+        .map(
+          (photo) => selectedIds.contains(photo.id)
+              ? photo.copyWith(location: _selectedLocation)
+              : photo,
+        )
         .toList();
 
     _photos = updated;
-    await _repository.updatePhotos(updated);
+    await _repository.persistPhotos(updated);
     await _exportPhotos(exportDirectory, updated, selectedIds);
     _selectedPhotoIds.clear();
     _isLoading = false;
     notifyListeners();
+    return exportDirectory;
   }
 
   /// Whether at least one selected photo has location set.
-  bool get hasSelectedPhotosWithLocation => _photos.any((p) =>
-      _selectedPhotoIds.contains(p.id) && p.location != null);
+  bool get hasSelectedPhotosWithLocation => _photos.any(
+    (p) => _selectedPhotoIds.contains(p.id) && p.location != null,
+  );
 
   /// Exports only selected photos that already have location set.
-  /// Does not open the map or ask for location input.
+  /// Does not open the map or ask for location input. Saves to GeoTag folder.
   Future<ExportPhotosResult> exportPhotosWithExistingLocation() async {
     final withLocation = _photos
-        .where((p) =>
-            _selectedPhotoIds.contains(p.id) && p.location != null)
+        .where((p) => _selectedPhotoIds.contains(p.id) && p.location != null)
         .toList();
     if (withLocation.isEmpty) {
       return ExportPhotosNoLocation();
@@ -348,9 +298,7 @@ class GeotaggingController extends ChangeNotifier {
       return ExportPhotosCancelled();
     }
 
-    final exportDirectory = await getDirectoryPath(
-      confirmButtonText: 'Select',
-    );
+    final exportDirectory = await _defaultGeoTagDirectory();
     if (exportDirectory == null) {
       return ExportPhotosCancelled();
     }
@@ -365,6 +313,39 @@ class GeotaggingController extends ChangeNotifier {
     _isLoading = false;
     notifyListeners();
     return ExportPhotosSuccess(exportDirectory);
+  }
+
+  Future<String?> _defaultGeoTagDirectory() async {
+    try {
+      String? basePath;
+      if (Platform.isAndroid) {
+        basePath = await _getAndroidPublicPicturesPath();
+      }
+      if (basePath == null || basePath.isEmpty) {
+        final base =
+            await getDownloadsDirectory() ??
+            await getApplicationDocumentsDirectory();
+        basePath = base.path;
+      }
+      final geoTagDir = Directory(PhotoPathHelper.joinPath(basePath, 'GeoTag'));
+      if (!await geoTagDir.exists()) {
+        await geoTagDir.create(recursive: true);
+      }
+      return geoTagDir.path;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static const _channel = MethodChannel('geopic/storage');
+
+  Future<String?> _getAndroidPublicPicturesPath() async {
+    try {
+      final path = await _channel.invokeMethod<String>('getPublicPicturesPath');
+      return path;
+    } on PlatformException {
+      return null;
+    }
   }
 
   Future<bool> _ensureStoragePermission() async {
@@ -400,51 +381,42 @@ class GeotaggingController extends ChangeNotifier {
     List<Photo> photos,
     Set<String> selectedIds,
   ) async {
+    final photosToExport = <Photo>[];
     for (final photo in photos) {
-      if (!selectedIds.contains(photo.id)) {
+      if (!selectedIds.contains(photo.id) || photo.location == null) {
         continue;
       }
       final sourcePath = photo.imagePath;
       if (sourcePath == null) {
         continue;
       }
-      final fileName = _fileName(sourcePath);
-      final destinationPath =
-          await _uniqueDestinationPath(directory, fileName);
+      photosToExport.add(photo);
+    }
+
+    if (photosToExport.isEmpty) {
+      return;
+    }
+
+    // Copy first, then write EXIF to the copies. We write to the destination
+    // (GeoTag) which we control and have write access. Writing to the source
+    // often fails on mobile (gallery paths may be read-only or content URIs).
+    final copiesForExif = <Photo>[];
+    for (final photo in photosToExport) {
+      final sourcePath = photo.imagePath!;
+      final fileName = PhotoPathHelper.fileName(sourcePath);
+      final destinationPath = await PhotoPathHelper.uniqueDestinationPath(
+        directory,
+        fileName,
+      );
       await File(sourcePath).copy(destinationPath);
+      copiesForExif.add(Photo(
+        id: photo.id,
+        title: photo.title,
+        takenAt: photo.takenAt,
+        imagePath: destinationPath,
+        location: photo.location,
+      ));
     }
-  }
-
-  Future<String> _uniqueDestinationPath(
-    String directory,
-    String fileName,
-  ) async {
-    final base = _joinPath(directory, fileName);
-    if (!await File(base).exists()) {
-      return base;
-    }
-
-    final normalized = fileName.replaceAll('\\', '/');
-    final dot = normalized.lastIndexOf('.');
-    final name =
-        dot == -1 ? normalized : normalized.substring(0, dot);
-    final ext = dot == -1 ? '' : normalized.substring(dot);
-
-    var index = 1;
-    while (true) {
-      final candidate = _joinPath(directory, '$name ($index)$ext');
-      if (!await File(candidate).exists()) {
-        return candidate;
-      }
-      index += 1;
-    }
-  }
-
-  String _joinPath(String dir, String file) {
-    final separator = Platform.pathSeparator;
-    if (dir.endsWith(separator)) {
-      return '$dir$file';
-    }
-    return '$dir$separator$file';
+    await _repository.writeExifForPhotos(copiesForExif);
   }
 }

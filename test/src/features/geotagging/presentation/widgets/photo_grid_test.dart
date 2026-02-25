@@ -6,6 +6,7 @@ import 'package:geotag/src/features/geotagging/domain/entities/photo.dart';
 import 'package:geotag/src/features/geotagging/domain/repositories/photo_repository.dart';
 import 'package:geotag/src/features/geotagging/presentation/controllers/geotagging_controller.dart';
 import 'package:geotag/src/features/geotagging/presentation/widgets/photo_grid.dart';
+import 'package:geotag/src/features/geotagging/presentation/widgets/photo_grid/photo_tile.dart';
 
 class FakePhotoRepository implements PhotoRepository {
   FakePhotoRepository({List<Photo>? initialPhotos})
@@ -22,6 +23,16 @@ class FakePhotoRepository implements PhotoRepository {
       ..clear()
       ..addAll(photos);
   }
+
+  @override
+  Future<void> persistPhotos(List<Photo> photos) async {
+    _photos
+      ..clear()
+      ..addAll(photos);
+  }
+
+  @override
+  Future<void> writeExifForPhotos(List<Photo> photos) async {}
 }
 
 void main() {
@@ -44,7 +55,6 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('Photos'), findsOneWidget);
       expect(find.text('No photos yet'), findsOneWidget);
       expect(find.text('Import'), findsOneWidget);
 
@@ -186,6 +196,42 @@ void main() {
         ),
       );
       expect(exportInkWell.onTap, isNotNull);
+
+      controller.dispose();
+    });
+
+    testWidgets('long-press on photo enables multiselect and selects photo',
+        (WidgetTester tester) async {
+      final photos = [
+        Photo(id: '1', title: 'photo1', takenAt: DateTime(2024, 1, 1)),
+      ];
+      final repo = FakePhotoRepository(initialPhotos: photos);
+      final controller = GeotaggingController(repo);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: ListenableBuilder(
+              listenable: controller,
+              builder: (context, _) => PhotoGrid(
+                controller: controller,
+                onSetLocationPressed: () {},
+                onExportCopiesPressed: () {},
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(controller.isMultiSelectEnabled, isFalse);
+      expect(controller.selectedPhotoIds, isEmpty);
+
+      await tester.longPress(find.byType(PhotoTile));
+      await tester.pumpAndSettle();
+
+      expect(controller.isMultiSelectEnabled, isTrue);
+      expect(controller.selectedPhotoIds, contains('1'));
 
       controller.dispose();
     });

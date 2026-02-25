@@ -1,3 +1,7 @@
+# Local scripts (may contain personal URLs – keep private)
+scripts/local_run.sh
+scripts/local_build.sh
+
 # Miscellaneous
 *.class
 *.log

@@ -1,0 +1,4 @@
+#!/bin/sh
+# Copy to local_run.sh and add your Buy Me a Coffee URL.
+# local_run.sh is gitignored – your URL stays private.
+exec flutter run --dart-define=BUY_ME_A_COFFEE_URL=https://www.buymeacoffee.com/ "$@"
