@@ -4,6 +4,10 @@ import 'package:flutter/material.dart';
 
 import '../../../domain/entities/photo.dart';
 
+/// Thumbnail size for grid – decode at this resolution to reduce memory.
+/// Grid tiles are ~1/3 screen width; 300px covers typical density.
+const int _thumbnailSize = 300;
+
 class PhotoPreview extends StatelessWidget {
   const PhotoPreview({super.key, required this.photo});
 
@@ -20,6 +24,8 @@ class PhotoPreview extends StatelessWidget {
         fit: BoxFit.cover,
         width: double.infinity,
         height: double.infinity,
+        cacheWidth: _thumbnailSize,
+        cacheHeight: _thumbnailSize,
         errorBuilder: (_, __, ___) => _placeholder(context),
       ),
     );

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
-const _splashBackgroundColor = Color(0xFFF8F8F8);
+/// Light gray – distinct from pure white so the loading screen is visible.
+const _splashBackgroundColor = Color(0xFFF0F0F0);
 const _splashAccentOrange = Color(0xFFF26725);
 
 /// Splash/loading screen shown when the application is initializing.
@@ -50,7 +51,16 @@ class SplashScreen extends StatelessWidget {
                   letterSpacing: 2.5,
                 ),
               ),
-              const SizedBox(height: 48),
+              const SizedBox(height: 32),
+              SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(_splashAccentOrange),
+                ),
+              ),
+              const SizedBox(height: 16),
               Text(
                 'LOADING...',
                 style: TextStyle(

@@ -2,6 +2,10 @@ import '../../domain/entities/photo.dart';
 import '../../domain/repositories/photo_repository.dart';
 import '../services/photo_metadata_service.dart';
 
+/// Set to a positive duration to delay init for testing the splash screen.
+/// Set to Duration.zero for production.
+const _testInitDelay = Duration(seconds: 3);
+
 class PhotoRepositoryImpl implements PhotoRepository {
   PhotoRepositoryImpl({PhotoMetadataService? metadataService})
       : _metadataService = metadataService ?? PhotoMetadataService();
@@ -11,7 +15,7 @@ class PhotoRepositoryImpl implements PhotoRepository {
 
   @override
   Future<List<Photo>> fetchPhotos() async {
-    await Future<void>.delayed(const Duration(milliseconds: 200));
+    await Future<void>.delayed(_testInitDelay);
     return List<Photo>.from(_photos);
   }
 

@@ -15,11 +15,17 @@ class GeoPicApp extends StatefulWidget {
 
 class _GeoPicAppState extends State<GeoPicApp> {
   late final GeotaggingController _controller;
+  bool _splashMinTimeElapsed = false;
+
+  static const _splashMinDuration = Duration(milliseconds: 800);
 
   @override
   void initState() {
     super.initState();
     _controller = GeotaggingController(PhotoRepositoryImpl());
+    Future.delayed(_splashMinDuration, () {
+      if (mounted) setState(() => _splashMinTimeElapsed = true);
+    });
   }
 
   @override
@@ -36,7 +42,8 @@ class _GeoPicAppState extends State<GeoPicApp> {
       home: AnimatedBuilder(
         animation: _controller,
         builder: (context, _) {
-          if (!_controller.hasCompletedInitialLoad) {
+          final ready = _controller.hasCompletedInitialLoad && _splashMinTimeElapsed;
+          if (!ready) {
             return const SplashScreen();
           }
           return GeotaggingPage(controller: _controller);
