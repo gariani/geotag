@@ -1,3 +1,8 @@
+release.keystore
+release.properties
+release.keystore.old
+release.properties.old
+
 # Local scripts (may contain personal URLs – keep private)
 scripts/*
 
