@@ -37,7 +37,7 @@ workflows:
         script: flutter test
       - name: Build Android APK
         script: |
-          flutter build appbundle --release
+          flutter build apk --release
     artifacts:
       - build/**/outputs/flutter-apk/**/*.apk
       - build/**/outputs/**/mapping.txt
