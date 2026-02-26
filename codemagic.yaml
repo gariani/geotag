@@ -1,1 +1,152 @@
-null
+# Codemagic CI/CD configuration for GetTag (GeoTag) Flutter app
+# Docs: https://docs.codemagic.io/yaml-quick-start/building-a-flutter-app/
+
+workflows:
+  android-release:
+    name: Android Release
+    max_build_duration: 30
+    # Use mac_mini_m2 (free tier). For paid: linux_x2 is cheaper.
+    instance_type: mac_mini_m2
+    environment:
+      flutter: stable
+      xcode: latest  # Required when using mac_mini_m2
+      groups:
+        - android_signing
+    cache:
+      cache_paths:
+        - $HOME/.pub-cache
+        - $HOME/.gradle/caches
+    triggering:
+      events:
+        - push
+        - pull_request
+      branch_patterns:
+        - pattern: "*"
+          include: true
+      cancel_previous_builds: true
+    scripts:
+      - name: Get Flutter packages
+        script: flutter pub get
+      - name: Run tests
+        script: flutter test
+      - name: Build Android APK
+        script: |
+          flutter build apk --release
+    artifacts:
+      - build/**/outputs/flutter-apk/**/*.apk
+      - build/**/outputs/**/mapping.txt
+    publishing:
+      # Add your email for build notifications (Codemagic UI → Notifications)
+      email:
+        recipients:
+          - danielgrafael@gmail.com
+        notify:
+          success: true
+          failure: true
+
+  # Android debug – no signing required, installable on device
+  android-debug:
+    name: Android Debug APK
+    max_build_duration: 20
+    # Use mac_mini_m2 (free tier). For paid: linux_x2 is cheaper.
+    instance_type: mac_mini_m2
+    environment:
+      flutter: stable
+      xcode: latest  # Required when using mac_mini_m2
+    cache:
+      cache_paths:
+        - $HOME/.pub-cache
+        - $HOME/.gradle/caches
+    triggering:
+      events: []
+      # Manual trigger only – no push/PR
+    scripts:
+      - name: Get Flutter packages
+        script: flutter pub get
+      - name: Run tests
+        script: flutter test
+      - name: Build Android APK (debug)
+        script: flutter build apk --debug
+    artifacts:
+      - build/app/outputs/flutter-apk/app-debug.apk
+    publishing:
+      email:
+        recipients:
+          - danielgrafael@gmail.com
+        notify:
+          success: true
+          failure: true
+
+  # iOS release – requires code signing setup in Codemagic UI first.
+  # Add: App Store Connect API key, distribution cert, provisioning profile for com.gibabertin.geopic
+  ios-release:
+    name: iOS Release
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+    environment:
+      flutter: stable
+      xcode: latest
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.gibabertin.geopic
+      groups: []
+    cache:
+      cache_paths:
+        - $HOME/.pub-cache
+        - $HOME/Library/Caches/CocoaPods
+    triggering:
+      events:
+        - push
+        - pull_request
+      branch_patterns:
+        - pattern: "*"
+          include: true
+      cancel_previous_builds: true
+    scripts:
+      - name: Set up code signing
+        script: xcode-project use-profiles
+      - name: Get Flutter packages
+        script: flutter pub get
+      - name: Install CocoaPods
+        script: find . -name "Podfile" -execdir pod install \;
+      - name: Run tests
+        script: flutter test
+      - name: Build iOS IPA
+        script: flutter build ipa --release
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+    publishing:
+      email:
+        recipients:
+          - danielgrafael@gmail.com
+        notify:
+          success: true
+          failure: true
+
+  # iOS debug – no signing needed, use to verify the pipeline
+  ios-debug:
+    name: iOS Debug (no signing)
+    max_build_duration: 45
+    instance_type: mac_mini_m2
+    environment:
+      flutter: stable
+      xcode: latest
+    cache:
+      cache_paths:
+        - $HOME/.pub-cache
+        - $HOME/Library/Caches/CocoaPods
+    triggering:
+      events: []
+      # Manual trigger only – no push/PR
+    scripts:
+      - name: Get Flutter packages
+        script: flutter pub get
+      - name: Install CocoaPods
+        script: find . -name "Podfile" -execdir pod install \;
+      - name: Run tests
+        script: flutter test
+      - name: Build iOS (no codesign)
+        script: flutter build ios --debug --no-codesign
+    artifacts:
+      - build/ios/ios/**/*.app
