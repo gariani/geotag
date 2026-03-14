@@ -12,6 +12,7 @@ workflows:
       xcode: latest  # Required when using mac_mini_m2
       groups:
         - android_signing
+        - shorebird  # SHOREBIRD_TOKEN for Shorebird releases (add in App settings → Environment variables)
     cache:
       cache_paths:
         - $HOME/q.pub-cache
@@ -25,15 +26,21 @@ workflows:
           include: true
       cancel_previous_builds: true
     scripts:
+      - name: Install Shorebird
+        script: |
+          curl --proto '=https' --tlsv1.2 https://raw.githubusercontent.com/shorebirdtech/install/main/install.sh -sSf | bash
+          echo "PATH=$HOME/.shorebird/bin:$PATH" >> $CM_ENV
       - name: Get Flutter packages
         script: flutter pub get
       - name: Run tests
         script: flutter test
-      - name: Build Android APK
+      - name: Shorebird Release
         script: |
-          flutter build apk --release
+          export PATH="$HOME/.shorebird/bin:$PATH"
+          shorebird release android
     artifacts:
       - build/**/outputs/flutter-apk/**/*.apk
+      - build/**/outputs/**/*.aab
       - build/**/outputs/**/mapping.txt
     publishing:
       # Add your email for build notifications (Codemagic UI → Notifications)
