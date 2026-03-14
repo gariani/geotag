@@ -1,4 +1,4 @@
-# Codemagic CI/CD configuration for GetTag (GeoTag) Flutter app
+# Codemagic CI/CD configuration for GeoTag Flutter appq
 # Docs: https://docs.codemagic.io/yaml-quick-start/building-a-flutter-app/
 
 workflows:
@@ -14,9 +14,9 @@ workflows:
         - android_signing
     cache:
       cache_paths:
-        - $HOME/.pub-cache
+        - $HOME/q.pub-cache
         - $HOME/.gradle/caches
-    triggering:
+    triggering:q
       events:
         - push
         - pull_request

@@ -4,7 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../config/support_config.dart';
 
 /// App name shown in About.
-const String _appName = 'GetTag';
+const String _appName = 'GeoTag';
 
 const String _openStreetMapUrl = 'https://www.openstreetmap.org';
 

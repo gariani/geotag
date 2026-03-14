@@ -52,7 +52,7 @@ class GeotaggingPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('GeoPic'),
+        title: const Text('GeoTag'),
         backgroundColor: Colors.white,
         foregroundColor: Colors.black87,
         elevation: 0,

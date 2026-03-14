@@ -5,7 +5,7 @@ import 'package:geotag/src/core/widgets/about_dialog.dart';
 
 void main() {
   group('AboutDialog', () {
-    testWidgets('shows dialog with GetTag title and OpenStreetMap links',
+    testWidgets('shows dialog with GeoTag title and OpenStreetMap links',
         (WidgetTester tester) async {
       await tester.pumpWidget(
         MaterialApp(
@@ -23,7 +23,7 @@ void main() {
       await tester.tap(find.text('About'));
       await tester.pumpAndSettle();
 
-      expect(find.text('About GetTag'), findsOneWidget);
+      expect(find.text('About GeoTag'), findsOneWidget);
       expect(find.text('OpenStreetMap'), findsWidgets);
       expect(find.text('Buy me a coffee'), findsOneWidget);
       expect(find.text('Close'), findsOneWidget);
