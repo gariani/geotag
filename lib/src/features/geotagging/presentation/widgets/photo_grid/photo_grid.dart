@@ -145,25 +145,36 @@ class PhotoGrid extends StatelessWidget {
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-            child: Row(
+            child: Wrap(
+              spacing: 12,
+              runSpacing: 8,
               children: [
                 FilterTab(
                   label: 'All',
                   isSelected: controller.filter == PhotoFilter.all,
                   onTap: () => controller.setFilter(PhotoFilter.all),
                 ),
-                const SizedBox(width: 16),
                 FilterTab(
                   label: 'Missing Location',
-                  isSelected: controller.filter == PhotoFilter.missingLocation,
+                  isSelected:
+                      controller.filter == PhotoFilter.missingLocation,
                   onTap: () =>
                       controller.setFilter(PhotoFilter.missingLocation),
                 ),
-                const SizedBox(width: 16),
                 FilterTab(
                   label: 'Recent',
                   isSelected: controller.filter == PhotoFilter.recent,
                   onTap: () => controller.setFilter(PhotoFilter.recent),
+                ),
+                FilterTab(
+                  label: 'Has Location',
+                  isSelected: controller.filter == PhotoFilter.hasLocation,
+                  onTap: () => controller.setFilter(PhotoFilter.hasLocation),
+                ),
+                FilterTab(
+                  label: 'No Exported',
+                  isSelected: controller.filter == PhotoFilter.exported,
+                  onTap: () => controller.setFilter(PhotoFilter.exported),
                 ),
               ],
             ),

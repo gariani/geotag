@@ -235,5 +235,153 @@ void main() {
 
       controller.dispose();
     });
+
+    testWidgets('shows Has Location and Exported filter tabs',
+        (WidgetTester tester) async {
+      final photos = [
+        Photo(id: '1', title: 'photo1', takenAt: DateTime(2024, 1, 1)),
+      ];
+      final repo = FakePhotoRepository(initialPhotos: photos);
+      final controller = GeotaggingController(repo);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: ListenableBuilder(
+              listenable: controller,
+              builder: (context, _) => PhotoGrid(
+                controller: controller,
+                onSetLocationPressed: () {},
+                onExportCopiesPressed: () {},
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Has Location'), findsOneWidget);
+      expect(find.text('No Exported'), findsOneWidget);
+
+      controller.dispose();
+    });
+
+    testWidgets('shows all five filter tabs', (WidgetTester tester) async {
+      final photos = [
+        Photo(id: '1', title: 'photo1', takenAt: DateTime(2024, 1, 1)),
+      ];
+      final repo = FakePhotoRepository(initialPhotos: photos);
+      final controller = GeotaggingController(repo);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: ListenableBuilder(
+              listenable: controller,
+              builder: (context, _) => PhotoGrid(
+                controller: controller,
+                onSetLocationPressed: () {},
+                onExportCopiesPressed: () {},
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('All'), findsOneWidget);
+      expect(find.text('Missing Location'), findsOneWidget);
+      expect(find.text('Recent'), findsOneWidget);
+      expect(find.text('Has Location'), findsOneWidget);
+      expect(find.text('No Exported'), findsOneWidget);
+
+      controller.dispose();
+    });
+
+    testWidgets('tapping filter tab updates displayed photos',
+        (WidgetTester tester) async {
+      const location = LocationInfo(latitude: 48.8, longitude: 2.3);
+      final photos = [
+        Photo(id: '1', title: 'no loc', takenAt: DateTime(2024, 1, 1)),
+        Photo(
+          id: '2',
+          title: 'with loc',
+          takenAt: DateTime(2024, 1, 2),
+          location: location,
+        ),
+      ];
+      final repo = FakePhotoRepository(initialPhotos: photos);
+      final controller = GeotaggingController(repo);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: ListenableBuilder(
+              listenable: controller,
+              builder: (context, _) => PhotoGrid(
+                controller: controller,
+                onSetLocationPressed: () {},
+                onExportCopiesPressed: () {},
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(PhotoTile), findsNWidgets(2));
+
+      await tester.tap(find.text('Missing Location'));
+      await tester.pumpAndSettle();
+      expect(find.byType(PhotoTile), findsOneWidget);
+      expect(find.text('no loc'), findsOneWidget);
+
+      await tester.tap(find.text('Has Location'));
+      await tester.pumpAndSettle();
+      expect(find.byType(PhotoTile), findsOneWidget);
+      expect(find.text('with loc'), findsOneWidget);
+
+      await tester.tap(find.text('All'));
+      await tester.pumpAndSettle();
+      expect(find.byType(PhotoTile), findsNWidgets(2));
+
+      controller.dispose();
+    });
+
+    testWidgets('Set Location button opens callback when pressed',
+        (WidgetTester tester) async {
+      final photos = [
+        Photo(id: '1', title: 'a', takenAt: DateTime(2024, 1, 1)),
+      ];
+      final repo = FakePhotoRepository(initialPhotos: photos);
+      final controller = GeotaggingController(repo);
+
+      var setLocationCalled = false;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: ListenableBuilder(
+              listenable: controller,
+              builder: (context, _) => PhotoGrid(
+                controller: controller,
+                onSetLocationPressed: () => setLocationCalled = true,
+                onExportCopiesPressed: () {},
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      controller.toggleMultiSelectMode();
+      controller.togglePhotoSelection('1');
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Set Location for 1 selected'));
+      await tester.pumpAndSettle();
+
+      expect(setLocationCalled, isTrue);
+      controller.dispose();
+    });
   });
 }

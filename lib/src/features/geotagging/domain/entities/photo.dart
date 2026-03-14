@@ -6,6 +6,7 @@ class Photo {
   final DateTime takenAt;
   final String? imagePath;
   final LocationInfo? location;
+  final DateTime? exportedAt;
 
   const Photo({
     required this.id,
@@ -13,11 +14,13 @@ class Photo {
     required this.takenAt,
     this.imagePath,
     this.location,
+    this.exportedAt,
   });
 
   Photo copyWith({
     String? imagePath,
     LocationInfo? location,
+    DateTime? exportedAt,
   }) {
     return Photo(
       id: id,
@@ -25,6 +28,7 @@ class Photo {
       takenAt: takenAt,
       imagePath: imagePath ?? this.imagePath,
       location: location ?? this.location,
+      exportedAt: exportedAt ?? this.exportedAt,
     );
   }
 }

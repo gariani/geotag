@@ -51,6 +51,10 @@ class GeotaggingController extends ChangeNotifier {
         final sorted = List<Photo>.from(_photos)
           ..sort((a, b) => b.takenAt.compareTo(a.takenAt));
         return sorted.take(50).toList();
+      case PhotoFilter.hasLocation:
+        return _photos.where((p) => p.location != null).toList();
+      case PhotoFilter.exported:
+        return _photos.where((p) => p.exportedAt == null).toList();
     }
   }
 
@@ -272,6 +276,7 @@ class GeotaggingController extends ChangeNotifier {
     _photos = updated;
     await _repository.persistPhotos(updated);
     await _exportPhotos(exportDirectory, updated, selectedIds);
+    _markPhotosAsExported(selectedIds);
     _selectedPhotoIds.clear();
     _isLoading = false;
     notifyListeners();
@@ -308,11 +313,22 @@ class GeotaggingController extends ChangeNotifier {
 
     final ids = withLocation.map((p) => p.id).toSet();
     await _exportPhotos(exportDirectory, _photos, ids);
+    _markPhotosAsExported(ids);
 
     _selectedPhotoIds.clear();
     _isLoading = false;
     notifyListeners();
     return ExportPhotosSuccess(exportDirectory);
+  }
+
+  void _markPhotosAsExported(Set<String> photoIds) {
+    final now = DateTime.now();
+    _photos = _photos.map((photo) {
+      if (photoIds.contains(photo.id)) {
+        return photo.copyWith(exportedAt: now);
+      }
+      return photo;
+    }).toList();
   }
 
   Future<String?> _defaultGeoTagDirectory() async {
