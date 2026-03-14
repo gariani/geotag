@@ -3,7 +3,7 @@ description: "Geolocation assignment for travel photos."
 publish_to: 'none'
 # Version format: major.minor.patch+build
 # Build number is auto-incremented by Codemagic (PROJECT_BUILD_NUMBER)
-version: 0.1.1+2
+version: 0.1.1+4
 
 environment:
   sdk: ^3.9.2
