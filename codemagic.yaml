@@ -38,9 +38,13 @@ workflows:
         script: |
           export PATH="$HOME/.shorebird/bin:$PATH"
           # PROJECT_BUILD_NUMBER auto-increments per app build; prevents "existing release" errors
-          shorebird release android --artifact apk -- --build-number=${PROJECT_BUILD_NUMBER:-1}
+          shorebird release android -- --build-number=${PROJECT_BUILD_NUMBER:-1}
+      - name: Build APK
+        script: |
+          # Explicit APK build for sideloading/download; Shorebird release produces AAB
+          flutter build apk --release --build-number=${PROJECT_BUILD_NUMBER:-1}
     artifacts:
-      - build/**/outputs/flutter-apk/**/*.apk
+      - build/app/outputs/flutter-apk/*.apk
       - build/**/outputs/**/*.aab
       - build/**/outputs/**/mapping.txt
       - build/**/outputs/**/*.aar
