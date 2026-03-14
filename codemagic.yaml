@@ -37,7 +37,8 @@ workflows:
       - name: Shorebird Release
         script: |
           export PATH="$HOME/.shorebird/bin:$PATH"
-          shorebird release android
+          # PROJECT_BUILD_NUMBER auto-increments per app build; prevents "existing release" errors
+          shorebird release android -- --build-number=${PROJECT_BUILD_NUMBER:-1}
     artifacts:
       - build/**/outputs/flutter-apk/**/*.apk
       - build/**/outputs/**/*.aab
