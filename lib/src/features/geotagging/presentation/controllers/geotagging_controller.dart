@@ -201,7 +201,11 @@ class GeotaggingController extends ChangeNotifier {
 
     const typeGroup = XTypeGroup(
       label: 'images',
-      extensions: ['jpg', 'jpeg', 'png', 'gif', 'webp', 'heic'],
+      extensions: [
+        'jpg', 'JPG', 'jpeg', 'JPEG', 'png', 'PNG', 'gif', 'GIF',
+        'webp', 'WEBP', 'heic', 'HEIC',
+        'arw', 'ARW', 'srf', 'SRF', 'sr2', 'SR2', // Sony RAW
+      ],
     );
     final files = await openFiles(acceptedTypeGroups: [typeGroup]);
     return files.map((file) => file.path).toList();

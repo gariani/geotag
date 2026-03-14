@@ -10,3 +10,12 @@ flutter run
 ```
 
 Android and iOS. Map tiles: OpenStreetMap.
+
+**RAW photo thumbnails (desktop)**
+
+On Linux, macOS, and Windows, RAW files (ARW, CR2, NEF, etc.) need external tools for thumbnails:
+
+- **exiftool** (recommended): `pacman -S perl-image-exiftool` (Arch/Manjaro), `brew install exiftool` (macOS)
+- **dcraw** (fallback): `pacman -S dcraw` (Arch/Manjaro)
+
+Call `RawThumbnailService.instance.checkDependencies()` to detect if these are installed.

@@ -1,4 +1,4 @@
-# Codemagic CI/CD configuration for GeoTag Flutter appq
+# Codemagic CI/CD configuration for GeoTag Flutter app
 # Docs: https://docs.codemagic.io/yaml-quick-start/building-a-flutter-app/
 
 workflows:
@@ -17,7 +17,7 @@ workflows:
       cache_paths:
         - $HOME/q.pub-cache
         - $HOME/.gradle/caches
-    triggering:q
+    triggering:
       events:
         - push
         - pull_request
@@ -163,3 +163,84 @@ workflows:
         script: flutter build ios --debug --no-codesign
     artifacts:
       - build/ios/ios/**/*.app
+
+  # Linux desktop – requires billing (linux_x2/linux_x4)
+  linux-release:
+    name: Linux Release
+    max_build_duration: 30
+    instance_type: linux_x2
+    environment:
+      flutter: stable
+      ubuntu: 24.04
+    cache:
+      cache_paths:
+        - $HOME/.pub-cache
+    triggering:
+      events: []
+      # Manual trigger – Linux builds require billing
+    scripts:
+      - name: Get Flutter packages
+        script: flutter pub get
+      - name: Run tests
+        script: flutter test
+      - name: Build Linux
+        script: flutter build linux --release --build-number=${PROJECT_BUILD_NUMBER:-1}
+    artifacts:
+      - build/linux/x64/release/bundle/**
+    publishing:
+      email:
+        recipients:
+          - danielgrafael@gmail.com
+        notify:
+          success: true
+          failure: true
+
+  # Windows desktop – requires billing (windows_x2)
+  # Produces: GeoTag-Setup-X.Y.Z.N.exe installer via Inno Setup
+  windows-release:
+    name: Windows Release
+    max_build_duration: 45
+    instance_type: windows_x2
+    environment:
+      flutter: stable
+    cache:
+      cache_paths:
+        - $HOME/.pub-cache
+    triggering:
+      events: []
+      # Manual trigger – Windows builds require billing
+    scripts:
+      - name: Get Flutter packages
+        script: flutter pub get
+      - name: Run tests
+        script: flutter test
+      - name: Build Windows
+        script: flutter build windows --release --build-number=${PROJECT_BUILD_NUMBER:-1}
+      - name: Install Inno Setup
+        script: |
+          $iscc = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
+          if (Test-Path $iscc) { exit 0 }
+          winget install --id JRSoftware.InnoSetup -e -h --accept-package-agreements --accept-source-agreements 2>$null
+          if (-not (Test-Path $iscc)) { choco install innosetup -y 2>$null }
+          if (-not (Test-Path $iscc)) { throw "Inno Setup not found. Install via winget or choco." }
+      - name: Create installer
+        script: |
+          $version = (Get-Content pubspec.yaml | Select-String '^version:').ToString().Split()[1].Split('+')[0]
+          $build = if ($env:PROJECT_BUILD_NUMBER) { $env:PROJECT_BUILD_NUMBER } else { "1" }
+          $appVersion = "$version.$build"
+          $iscc = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
+          if (Test-Path $iscc) {
+            & $iscc /DAppVersion=$appVersion packaging\windows\installer.iss
+          } else {
+            Write-Error "Inno Setup (ISCC.exe) not found"
+          }
+    artifacts:
+      - build/windows/x64/runner/Release/**
+      - build/installer/*.exe
+    publishing:
+      email:
+        recipients:
+          - danielgrafael@gmail.com
+        notify:
+          success: true
+          failure: true
