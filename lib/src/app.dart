@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'core/theme/app_theme.dart';
+import 'core/widgets/exiftool_reminder_dialog.dart';
 import 'core/widgets/splash_screen.dart';
 import 'features/geotagging/data/repositories/photo_repository_impl.dart';
 import 'features/geotagging/presentation/controllers/geotagging_controller.dart';
@@ -46,7 +47,9 @@ class _GeoPicAppState extends State<GeoPicApp> {
           if (!ready) {
             return const SplashScreen();
           }
-          return GeotaggingPage(controller: _controller);
+          return ExiftoolReminderOverlay(
+            child: GeotaggingPage(controller: _controller),
+          );
         },
       ),
     );
